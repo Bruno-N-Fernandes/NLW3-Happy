@@ -1,19 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Dimensions, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Dimensions, Text } from 'react-native';
 import MapView, { Region, PROVIDER_GOOGLE, Callout, Marker } from 'react-native-maps';
 import { Feather } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
-import { useNavigation } from '@react-navigation/native';
-
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import mapMarker from '../images/map-marker.png';
 import { getCurrentPositionAsync, LocationAccuracy, requestPermissionsAsync } from 'expo-location';
+import { RectButton } from 'react-native-gesture-handler';
+import api from '../services/api';
 
+interface IOrphanage {
+	id: number;
+	name: string;
+	latitude: number;
+	longitude: number;
+}
 
 export default function OrphanagesMap() {
 	const navigation = useNavigation();
 	const [location, setLocation] = useState<Region>();
+	const [orphanages, setOrphanages] = useState<IOrphanage[]>([]);
 	const [fontsLoaded] = useFonts({
 		Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold
 	});
@@ -24,7 +32,7 @@ export default function OrphanagesMap() {
 
 			if (granted) {
 				const location = await getCurrentPositionAsync({
-					accuracy: LocationAccuracy.BestForNavigation,
+					accuracy: LocationAccuracy.Balanced,
 				});
 
 				setLocation({
@@ -39,8 +47,18 @@ export default function OrphanagesMap() {
 		loadInitialPosition();
 	}, []);
 
-	function handleNavigateToOrphanageDetails() {
-		navigation.navigate("OrphanageDetails")
+	useFocusEffect(() => {
+		api.get("/orphanages")
+			.then(response => response.data)
+			.then(orphanages => setOrphanages(orphanages));
+	});
+
+	function handleNavigateToOrphanageDetails(id: number) {
+		navigation.navigate("OrphanageDetails", { id })
+	}
+
+	function handleNavigateToCreateOrphanage() {
+		navigation.navigate("SelectMapPosition")
 	}
 
 	if (!fontsLoaded || !location) {
@@ -50,21 +68,25 @@ export default function OrphanagesMap() {
 	return (
 		<View style={styles.container}>
 			<MapView provider={PROVIDER_GOOGLE} style={styles.map} initialRegion={location} >
-				<Marker icon={mapMarker} coordinate={location} calloutAnchor={{ x: 3.3, y: 1.0 }} >
-					<Callout tooltip={true} onPress={handleNavigateToOrphanageDetails}>
-						<View style={styles.calloutContainer}>
-							<Text style={styles.calloutText}>Lar das Meninas...</Text>
-						</View>
-					</Callout>
-				</Marker>
+				{orphanages.map(orphanage => {
+					return (
+						<Marker key={orphanage.id} icon={mapMarker} coordinate={orphanage} calloutAnchor={{ x: 3.3, y: 1.0 }} >
+							<Callout tooltip={true} onPress={() => handleNavigateToOrphanageDetails(orphanage.id)}>
+								<View style={styles.calloutContainer}>
+									<Text style={styles.calloutText}>{orphanage.name}</Text>
+								</View>
+							</Callout>
+						</Marker>
+					);
+				})}
 			</MapView>
 
 			<View style={styles.footer}>
-				<Text style={styles.footerText}>2 orfanatos encontrados</Text>
+				<Text style={styles.footerText}>{orphanages.length} orfanatos encontrados</Text>
 
-				<TouchableOpacity style={styles.createOrphanageButton} onPress={() => alert('oi')}>
+				<RectButton style={styles.createOrphanageButton} onPress={handleNavigateToCreateOrphanage}>
 					<Feather name='plus' />
-				</TouchableOpacity>
+				</RectButton>
 			</View>
 		</View>
 	);
