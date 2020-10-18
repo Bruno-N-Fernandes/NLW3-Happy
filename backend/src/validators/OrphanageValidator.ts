@@ -15,6 +15,7 @@ export const OrphanageValidatorDef = Yup.object().shape({
 	)
 });
 
-export default async function OrphanageValidator(orphanage: any) {
+export default async function OrphanageValidator(orphanage: any): Promise<any> {
 	await OrphanageValidatorDef.validate(orphanage, { abortEarly: false });
+	return OrphanageValidatorDef.cast(orphanage);
 }

@@ -21,13 +21,14 @@ export default {
 
 	async create(request: Request, response: Response) {
 		const orphanageJson = request.body;
-		const uploadedImages = request.files as Express.Multer.File[];
-		orphanageJson.images = uploadedImages.map(image => { return { path: image.filename } });
-
-		await OrphanageValidator(orphanageJson);
+		if (request.files) {
+			const uploadedImages = request.files as Express.Multer.File[];
+			orphanageJson.images = uploadedImages.map(image => { return { path: image.filename } });
+		}
+		const orphanageValidated = await OrphanageValidator(orphanageJson);
 
 		const orphanageRepository = getRepository(Orphanage);
-		const orphanage = orphanageRepository.create(orphanageJson);
+		const orphanage = orphanageRepository.create(orphanageValidated);
 		await orphanageRepository.save(orphanage);
 
 		return response.status(201).json(orphanage);
